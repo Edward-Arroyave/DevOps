@@ -1,0 +1,3 @@
+CREATE SCHEMA [TYL]
+AUTHORIZATION [cesar_jimenez]
+GO

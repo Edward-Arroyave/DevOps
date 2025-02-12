@@ -1,0 +1,3 @@
+CREATE SCHEMA [INT]
+AUTHORIZATION [cesar_jimenez]
+GO

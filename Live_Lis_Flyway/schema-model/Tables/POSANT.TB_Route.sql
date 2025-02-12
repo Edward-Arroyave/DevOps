@@ -1,0 +1,9 @@
+CREATE TABLE [POSANT].[TB_Route]
+(
+[IdRoute] [int] NOT NULL IDENTITY(1, 1),
+[RouteDescription] [varchar] (200) NOT NULL,
+[RouteTypeSend] [int] NOT NULL
+)
+GO
+ALTER TABLE [POSANT].[TB_Route] ADD CONSTRAINT [PK__TB_Route__A5E13300DB9FEED2] PRIMARY KEY CLUSTERED ([IdRoute])
+GO

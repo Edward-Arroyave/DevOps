@@ -1,0 +1,3 @@
+CREATE SCHEMA [GLO]
+AUTHORIZATION [cesar_jimenez]
+GO

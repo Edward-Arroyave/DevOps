@@ -1,0 +1,481 @@
+databaseType = "SqlServer"
+id = "b1e557df-a302-4a58-a348-3ef15017234d"
+name = "Live_Lis_FlywayDB"
+
+[flyway]
+defaultSchema = "dbo"
+locations = [ "filesystem:migrations" ]
+mixed = true
+outOfOrder = true
+schemaModelLocation = "schema-model"
+validateMigrationNaming = true
+
+  [flyway.check]
+  majorTolerance = 0
+
+[flyway.sqlserver.clean]
+mode = "all"
+
+[flywayDesktop]
+developmentEnvironment = "development"
+shadowEnvironment = "shadow"
+
+[redgateCompare]
+filterFile = "filter.rgf"
+
+  [redgateCompare.sqlserver]
+  filterFile = "Filter.scpf"
+
+[redgateCompare.sqlserver.options.behavior]
+addCreateOrAlterForRerunnableScripts = false
+addDropAndCreateForRerunnableScripts = false
+addNoPopulationToFulltextIndexes = false
+addObjectExistenceChecks = false
+addOnlineOnWhenCreatingIndexesOrAlteringColumns = false
+addWithEncryption = false
+considerNextFilegroupInPartitionSchemes = true
+decryptEncryptedObjects = true
+disableAutoColumnMapping = false
+dontUseAlterAssemblyToChangeClrObjects = false
+forbidDuplicateTableStorageSettings = false
+forceColumnOrder = false
+ignoreMigrationScripts = false
+includeDependencies = true
+includeRoleExistenceChecks = true
+includeSchemaExistenceChecks = true
+inlineFulltextFields = false
+inlineTableObjects = false
+useCaseSensitiveObjectDefinition = false
+useDatabaseCompatibilityLevel = false
+useSetStatementsInScriptDatabaseInfo = false
+writeAssembliesAsDlls = false
+
+[redgateCompare.sqlserver.options.ignores]
+ignoreAuthorizationOnSchemaObjects = false
+ignoreBindings = false
+ignoreChangeTracking = false
+ignoreCollations = true
+ignoreComments = false
+ignoreDataCompression = true
+ignoreDataSyncSchema = false
+ignoreDatabaseAndServerNameInSynonyms = true
+ignoreDmlTriggers = false
+ignoreDynamicDataMasking = false
+ignoreEventNotificationsOnQueues = false
+ignoreExtendedProperties = false
+ignoreFileGroupsPartitionSchemesAndPartitionFunctions = true
+ignoreFillFactorAndIndexPadding = true
+ignoreFullTextIndexing = false
+ignoreIdentitySeedAndIncrementValues = false
+ignoreIndexes = false
+ignoreInsteadOfTriggers = false
+ignoreInternallyUsedMicrosoftExtendedProperties = false
+ignoreLockPropertiesOfIndexes = false
+ignoreNocheckAndWithNocheck = false
+ignoreNotForReplication = true
+ignoreNullabilityOfColumns = false
+ignorePerformanceIndexes = false
+ignorePermissions = false
+ignoreReplicationTriggers = true
+ignoreSchemas = false
+ignoreSensitivityClassifications = false
+ignoreSetQuotedIdentifierAndSetAnsiNullsStatements = false
+ignoreSquareBracketsInObjectNames = false
+ignoreStatistics = true
+ignoreStatisticsIncremental = false
+ignoreStatisticsNoRecomputePropertyOnIndexes = false
+ignoreSynonymDependencies = false
+ignoreSystemNamedConstraintAndIndexNames = false
+ignoreTsqltFrameworkAndTests = true
+ignoreUserProperties = true
+ignoreUsersPermissionsAndRoleMemberships = true
+ignoreWhiteSpace = true
+ignoreWithElementOrder = true
+ignoreWithEncryption = false
+ignoreWithNoCheck = true
+
+[redgateCompare.sqlserver.data.options.mapping]
+includeTimestampColumns = false
+useCaseSensitiveObjectDefinition = true
+
+[redgateCompare.sqlserver.data.options.comparison]
+compressTemporaryFiles = false
+forceBinaryCollation = false
+treatEmptyStringAsNull = false
+trimTrailingWhiteSpace = false
+useChecksumComparison = false
+useMaxPrecisionForFloatComparison = false
+
+[redgateCompare.sqlserver.data.options.deployment]
+disableDdlTriggers = true
+disableDmlTriggers = false
+disableForeignKeys = false
+dontIncludeCommentsInScript = false
+dropPrimaryKeysIndexesAndUniqueConstraints = false
+reseedIdentityColumns = false
+skipIntegrityChecksForForeignKeys = false
+transportClrDataTypesAsBinary = false
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_AdditionalForm"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_MenuIcon"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_BillingResolution"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Profile"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_DetailBillingResolution"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Role"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_PaymentMethod"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_EntailmentType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_BillingOfSaleStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_PasswdRenewalPeriod"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ThirdPerson"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Profession"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_CancellationReasonType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_CIE10_Code3"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_CIE10_Code4"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ContainerType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_AttentionModel"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_BillingGroup"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_BusinessUnit"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ContractAmountType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ContractDeadline"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ContractType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_GenerateCopay_CM"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_QuoteValidity"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_TariffScheme"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SellerCode"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_InvoiceStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_TransactionStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_AttentionCenter"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Template"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Service"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_CancellationReason"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_PersonInCharge"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Contract"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Relationship"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ElectronicBilling"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_AdmissionSource"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Exam"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_RequestServiceType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_RequestStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ReasonsForPostponement"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ResultPaterReqStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Request"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SampleRegistrationStatus"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SectionType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ResultPaternityRequest"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceDescription"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceGroupLevel3"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceSpeciality"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceSubCategory"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SampleRegistration"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceCategory"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Section"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceGroup"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ServiceGroupLevel2"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_Patient_Exam"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_TariffSchemeType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_TypeOfPerson"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_Request_Exam"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_TypeOfProcedure"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_ExamResult"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_Request_Patient"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "PTO"
+  table = "TB_PathologyExamType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_PlaceDeliveryResults"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "PTO"
+  table = "TB_BodyPart"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "PTO"
+  table = "TB_FixingMedium"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_BillingOfSale_Request"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_BillingOfSale"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_CommercialZone"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_TariffScheme_Service"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_User"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "ANT"
+  table = "TB_ConfExamSectionPermits"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "History"
+  table = "TH_PaternityRequestHistory"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Menu"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SampleRegistrationDetail"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_Role_Menu"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "POSANT"
+  table = "TB_NotificationPending"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TR_User_Menu"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "POSANT"
+  table = "TB_RejectSamples"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "ANT"
+  table = "TB_AnalyticalParameteList"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Company"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_SampleType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_City"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "History"
+  table = "TH_PaternityRequest_Patient"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Country"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_Department"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "ANT"
+  table = "TB_AnalyticalExamImage"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_EconomicActivity"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_AdditionalFormType"
+
+  [[redgateCompare.staticDataTables]]
+  schema = "dbo"
+  table = "TB_IdentificationType"

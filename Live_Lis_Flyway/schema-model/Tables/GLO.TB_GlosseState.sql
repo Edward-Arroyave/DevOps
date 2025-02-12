@@ -1,0 +1,8 @@
+CREATE TABLE [GLO].[TB_GlosseState]
+(
+[IDGlosseState] [int] NOT NULL IDENTITY(1, 1),
+[StateName] [varchar] (20) NULL
+)
+GO
+ALTER TABLE [GLO].[TB_GlosseState] ADD CONSTRAINT [PK__TB_Gloss__2C91AFAD2B5D692F] PRIMARY KEY CLUSTERED ([IDGlosseState])
+GO

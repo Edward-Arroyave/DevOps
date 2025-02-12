@@ -1,0 +1,3 @@
+CREATE USER [analitica] WITHOUT LOGIN
+GO
+GRANT CONNECT TO [analitica]

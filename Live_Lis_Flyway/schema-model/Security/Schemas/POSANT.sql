@@ -1,0 +1,3 @@
+CREATE SCHEMA [POSANT]
+AUTHORIZATION [paola_tellez]
+GO

@@ -1,0 +1,8 @@
+CREATE EXTERNAL DATA SOURCE [HIS_DEMO] WITH
+(
+LOCATION = N'hisdb.database.windows.net',
+CREDENTIAL = [HIS_PROD],
+TYPE = RDBMS,
+DATABASE_NAME = N'care_his_me_demo'
+)
+GO

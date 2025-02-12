@@ -1,0 +1,75 @@
+name: 🚨 Reportar Commits Inválidos
+
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - demo
+      - prod
+
+jobs:
+  check-commit-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Obtener mensajes de commit
+        run: |
+          git log --pretty=format:"%H %an %s" -n 10 > commit_messages.txt
+          echo "Últimos commits revisados:"
+          cat commit_messages.txt
+
+      - name: Validar mensajes de commit
+        id: validate_commits
+        run: |
+          VALID_PREFIXES="add:|fix:|update:|remove:|refactor:|docs:|test:|chore:"
+          INVALID_COMMITS=$(grep -E -v "^\[($VALID_PREFIXES)\]" commit_messages.txt || true)
+          
+          if [[ ! -z "$INVALID_COMMITS" ]]; then
+            echo "🚨 ERROR: Commits inválidos detectados:"
+            echo "$INVALID_COMMITS"
+            echo "invalid_commits=$INVALID_COMMITS" >> $GITHUB_ENV
+            exit 1
+          fi
+
+  create-issue:
+    needs: check-commit-message
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Crear un Issue de Reporte
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commitDetails = `${{ env.invalid_commits }}`.split("\n").map(c => `- ${c}`).join("\n");
+
+            const issueTitle = "🚨 Commits con formato incorrecto detectados";
+            const issueBody = `### ❌ Commits inválidos encontrados  
+            ${commitDetails}  
+            
+            **📌 Solución**  
+            Ejecuta lo siguiente para corregir los mensajes de commit:  
+            \`\`\`bash
+            git rebase -i HEAD~N  # Cambia 'pick' por 'reword' y corrige el mensaje
+            git push --force-with-lease
+            \`\`\`
+            
+            **✅ Formato correcto:**  
+            - \`[add:]\` Nueva funcionalidad  
+            - \`[fix:]\` Corrección de errores  
+            - \`[update:]\` Mejoras en código  
+            - \`[remove:]\` Eliminación de código obsoleto  
+            - \`[refactor:]\` Refactorización del código`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ["🚨 Commit Inválido", "❌ Error"]
+            });
