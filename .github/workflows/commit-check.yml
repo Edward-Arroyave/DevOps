@@ -5,7 +5,10 @@ on:
     types: [opened, edited, synchronize]
   push:
     branches:
-      - main
+      - dev
+      - test
+      - demo
+      - prod
 
 jobs:
   commit-validation:
