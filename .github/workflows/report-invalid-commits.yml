@@ -25,7 +25,7 @@ jobs:
       - name: Validar mensajes de commit
         id: validate_commits
         run: |
-          VALID_PREFIXES="add:|fix:|update:|remove:|refactor:|docs:|test:|chore:"
+          VALID_PREFIXES="add:|fix:|update:|remove:|refactor:|docs:|test:|chore:|Initial commit"
           INVALID_COMMITS=$(grep -E -v "^\[($VALID_PREFIXES)\]" commit_messages.txt || true)
           
           if [[ ! -z "$INVALID_COMMITS" ]]; then
