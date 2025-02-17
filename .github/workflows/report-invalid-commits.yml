@@ -1,4 +1,4 @@
-name: 🚨 Reportar Commits Inválidos
+name: "🚨 Validar Commit Actual"
 
 on:
   push:
@@ -6,72 +6,62 @@ on:
       - dev
       - test
       - demo
-      - prod
+      - main
+  pull_request:
+    types: [opened, synchronize]
 
 jobs:
-  check-commit-message:
+  validate-commit-message:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    concurrency:
+      group: "commit-validation-${{ github.ref }}"
+      cancel-in-progress: true
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Obtener mensajes de commit
-        run: |
-          git log --pretty=format:"%H %an %s" -n 10 > commit_messages.txt
-          echo "Últimos commits revisados:"
-          cat commit_messages.txt
-
-      - name: Validar mensajes de commit
-        id: validate_commits
-        run: |
-
-          VALID_PREFIXES="add:|fix:|update:|remove:|refactor:|docs:|test:|chore:|Initial commit"
-          INVALID_COMMITS=$(grep -E -v "^\[($VALID_PREFIXES)\]" commit_messages.txt || true)
-          
-          if [[ ! -z "$INVALID_COMMITS" ]]; then
-            echo "🚨 ERROR: Commits inválidos detectados:"
-            echo "$INVALID_COMMITS"
-            echo "invalid_commits=$INVALID_COMMITS" >> $GITHUB_ENV
-            exit 1
-          fi
-
-  create-issue:
-    needs: check-commit-message
-    if: failure()
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Crear un Issue de Reporte
-        uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const commitDetails = `${{ env.invalid_commits }}`.split("\n").map(c => `- ${c}`).join("\n");
+          fetch-depth: 1
 
-            const issueTitle = "🚨 Commits con formato incorrecto detectados";
-            const issueBody = `### ❌ Commits inválidos encontrados  
-            ${commitDetails}  
+      - name: Validar mensaje del commit
+        run: |
+          # Obtener el mensaje y hash del commit, y la rama
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          COMMIT_HASH=$(git log -1 --pretty=%H)
+          AUTHOR_NAME=$(git log -1 --pretty=%an)
+          GITHUB_USER=${{ github.actor }}
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          
+          echo "Mensaje del commit: $COMMIT_MESSAGE"
+          echo "Commit hash: $COMMIT_HASH"
+          echo "Rama actual: $CURRENT_BRANCH"
+          
+          # Validación del formato del commit
+          if [[ ! "$COMMIT_MESSAGE" =~ ^\[(add|fix|update|remove|refactor|docs|test|chore|initial commit)\]:\ .*$ ]]; then
+            echo "❌ El mensaje de commit no sigue el formato requerido."
             
-            **📌 Solución**  
-            Ejecuta lo siguiente para corregir los mensajes de commit:  
-            \`\`\`bash
-            git rebase -i HEAD~N  # Cambia 'pick' por 'reword' y corrige el mensaje
-            git push --force-with-lease
-            \`\`\`
+            # Crear un issue si el mensaje no cumple con el formato
+            ISSUE_RESPONSE=$(curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{
+                    "title": "🚨 Commit inválido - Requiere corrección de formato",
+                    "body": "El commit realizado por @'"$AUTHOR_NAME"' no sigue el formato requerido para los mensajes de commit.\n\n**Commit hash**: ['"$COMMIT_HASH"'](https://github.com/${{ github.repository }}/commit/'"$COMMIT_HASH"')\n**Rama actual**: '$CURRENT_BRANCH'\n\n**Encabezado del commit**: '"$COMMIT_MESSAGE"'\n\n**Pasos para corregir el commit**:\n\n1. **Clonar el repositorio (si no lo tienes clonado):**\n   - Si no tienes el repositorio en tu máquina local, clónalo con el siguiente comando:\n     ```\n     git clone https://github.com/${{ github.repository }}.git\n     ```\n\n2. **Actualizar tu repositorio (si ya lo tienes clonado):**\n   - Si ya tienes el repositorio, asegúrate de tener los últimos cambios ejecutando:\n     ```\n     git pull origin '$CURRENT_BRANCH'\n     ```\n\n3. **Guardar tu trabajo actual:**\n   - Antes de proceder, asegúrate de guardar cualquier cambio no confirmado. Puedes hacer un respaldo creando una rama temporal:\n     ```\n     git checkout -b backup-branch\n     ```\n   - Esto te permitirá guardar tu trabajo y restaurarlo si algo sale mal.\n\n4. **Moverse al commit previo con el hash:**\n   - Usa el siguiente comando para moverte al commit previo usando el commit hash: `git checkout '$COMMIT_HASH'`\n   - Esto te llevará a la versión exacta del commit anterior.\n\n5. **Modificar el mensaje del commit:**\n   - Modifica el mensaje del commit con el siguiente comando (sin cambiar el contenido del commit):\n     ```\n     git commit --amend --no-edit -m \"[add]: Descripción del cambio\"\n     ```\n   - Este comando modificará solo el mensaje del último commit sin cambiar el contenido.\n\n6. **Revisar el commit modificado:**\n   - Asegúrate de que el commit se modificó correctamente con el siguiente comando:\n     ```\n     git log -1\n     ```\n   - Esto mostrará el último commit con el mensaje actualizado.\n\n7. **Subir los cambios al repositorio remoto:**\n   - Una vez que el commit esté modificado, sube los cambios con el siguiente comando:\n     ```\n     git push --force-with-lease origin '$CURRENT_BRANCH'\n     ```\n   - Usar `--force-with-lease` garantiza que no sobrescribas los cambios de otros colaboradores.\n\n**Por favor, realice la corrección y haga un nuevo push.**\n\n**Verbos permitidos en el mensaje del commit:**\n\n- **[add]:** Para añadir nuevas funcionalidades.\n- **[fix]:** Para solucionar errores.\n- **[update]:** Para actualizar funcionalidades existentes.\n- **[remove]:** Para eliminar funcionalidades.\n- **[refactor]:** Para cambios de código que no afectan el comportamiento del sistema (refactorización).\n- **[docs]:** Para cambios relacionados con la documentación.\n- **[test]:** Para agregar o modificar pruebas.\n- **[chore]:** Para tareas generales, como la actualización de dependencias, configuración del entorno, etc.\n- **[initial commit]:** El primer commit del proyecto.",
+                    "labels": ["invalid-commit"]
+                  }' \
+              https://api.github.com/repos/${{ github.repository }}/issues)
+            # Obtener el ID del issue creado
+            ISSUE_NUMBER=$(echo "$ISSUE_RESPONSE" | jq '.number')
             
-            **✅ Formato correcto:**  
-            - \`[add:]\` Nueva funcionalidad  
-            - \`[fix:]\` Corrección de errores  
-            - \`[update:]\` Mejoras en código  
-            - \`[remove:]\` Eliminación de código obsoleto  
-            - \`[refactor:]\` Refactorización del código`;
-            - \`[Inital commit:]\` inciio de repositorio`;
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: issueTitle,
-              body: issueBody,
-              labels: ["🚨 Commit Inválido", "❌ Error"]
-            });
+            # Asignar el issue tanto al autor del commit como al administrador
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d '{
+                    "assignees": ["'"$GITHUB_USER"'"]
+                  }' \
+              https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/assignees
+            exit 1
+          else
+            echo "✅ El mensaje de commit cumple con el formato requerido."
+          fi
