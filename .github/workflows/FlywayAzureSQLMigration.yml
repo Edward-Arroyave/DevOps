@@ -113,13 +113,7 @@ jobs:
           ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
           ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
-          **Error Encontrado:**
-          - SQL State: S0001
-          - Error Code: 2714
-          - Message: There is already an object named 'brand' in the database.
-          - Location: ./Live_Lis_Flyway/migrations/20250206_Actualizacion_TimeZone/V1.0.4__Create_brad.sql
-          - Line: 4
-          - Statement: -- Flyway migration script V1.0.1__Create_brad_table.sql"
+         
       
           # Crear issue con datos técnicos reales
           gh issue create \
