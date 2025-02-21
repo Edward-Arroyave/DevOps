@@ -109,15 +109,21 @@ jobs:
 
           # Crear issue usando la plantilla
           gh issue create \
+            --template "flyway-migration-error.yml" \
             --title "[${SERVER^^}] Flyway Migration Error - ${MIGRATION_FILE##*/}" \
-            --label "flyway,bug,migration-error" \
-            --assignee "${{ github.actor }}" \
-            --field "migration_file=${MIGRATION_FILE}" \
-            --field "error_message=${ERROR_MESSAGE}" \
-            --field "event_trigger=flyway migrate" \
-            --field "commit_hash=${{ github.sha }}" \
-            --field "timestamp=${TIMESTAMP}" \
-            --field "git_actor=${{ github.actor }}" \
-            --field "git_user_details=Triggered by GitHub Actions workflow" \
-            --field "logs=${LOGS}" \
-            --field "additional_info=Entorno: ${{ github.ref_name }}\nServidor SQL: ${SERVER}.database.windows.net\nDatabase: ${DATABASE}"
+            --body-file - << EOF
+---
+migration_file: "$MIGRATION_FILE"
+error_message: "$ERROR_MESSAGE"
+event_trigger: "flyway migrate"
+commit_hash: "${{ github.sha }}"
+timestamp: "$TIMESTAMP"
+git_actor: "${{ github.actor }}"
+logs: |
+  $LOGS
+additional_info: |
+  Entorno: ${{ github.ref_name }}
+  Servidor SQL: ${SERVER}.database.windows.net
+  Database: $DATABASE
+---
+EOF
