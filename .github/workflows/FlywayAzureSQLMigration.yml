@@ -38,11 +38,11 @@ jobs:
             echo "FAILURE" > flyway_failed.log
             exit $EXIT_CODE
           fi
-      - name: Handle Migration Error
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
+            - name: Handle Migration Error
+          if: failure()
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
           # Verificar si el archivo de errores existe
           if [ ! -f flyway_error.log ]; then
             echo "⚠️ Flyway falló antes de generar un log. Posible problema de conexión o configuración."
@@ -71,5 +71,6 @@ jobs:
             --body-file issue_body.md \
             --assignee "Edward-Arroyave" \
             --label "flyway,bug,migration-error"
+
 
      
