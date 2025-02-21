@@ -29,14 +29,23 @@ jobs:
           echo "env=$ENV" >> $GITHUB_OUTPUT
 
       - name: Run Flyway Migrations
-        uses: redgate/flyway:latest-alpine
-        with:
-          url: ${{ secrets[format('FLYWAY_URL_{0}', steps.env.outputs.env | upper)] }}
-          user: ${{ secrets[format('FLYWAY_USER_{0}', steps.env.outputs.env | upper)] }}
-          password: ${{ secrets[format('FLYWAY_PASSWORD_{0}', steps.env.outputs.env | upper)] }}
-          locations: filesystem:./Live_Lis_Flyway/migrations
-          extraArgs: -configFiles=./Live_Lis_Flyway/flyway.toml -X -logFile="./flyway_${{ github.run_id }}.log"
-        id: flyway
+        run: |
+          docker run --rm \
+            -v $(pwd)/Live_Lis_Flyway:/flyway/Live_Lis_Flyway \
+            redgate/flyway:latest-alpine \
+            migrate \
+            -url="${{ secrets[format('FLYWAY_URL_{0}', steps.env.outputs.env | upper)] }}" \
+            -user="${{ secrets[format('FLYWAY_USER_{0}', steps.env.outputs.env | upper)] }}" \
+            -password="${{ secrets[format('FLYWAY_PASSWORD_{0}', steps.env.outputs.env | upper)] }}" \
+            -locations="filesystem:/flyway/Live_Lis_Flyway/migrations" \
+            -configFiles=/flyway/Live_Lis_Flyway/flyway.toml \
+            -X \
+            -logFile="/flyway/flyway_${{ github.run_id }}.log" || {
+              echo "::error::Error en migración"
+              exit 1
+            }
+          # Copiar el log al host para usarlo en pasos posteriores
+          docker cp $(docker ps -lq):/flyway/flyway_${{ github.run_id }}.log ./flyway_${{ github.run_id }}.log
 
       - name: Upload Log on Failure
         if: failure()
