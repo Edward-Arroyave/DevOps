@@ -1,129 +1,74 @@
-name: Flyway Azure SQL Migrations
-
-on:
-  push:
-    branches: [main, test, demo, dev]
-  workflow_dispatch:
-
-concurrency:
-  group: flyway-migrations-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  run-migrations:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Flyway
-        run: |
-          FLYWAY_VERSION=11.3.2
-          curl -sL https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/$FLYWAY_VERSION/flyway-commandline-$FLYWAY_VERSION-linux-x64.tar.gz -o flyway.tar.gz
-          tar -xzf flyway.tar.gz
-          echo "$(pwd)/flyway-$FLYWAY_VERSION" >> $GITHUB_PATH
-
-      - name: Set Environment Variables
-        run: |
-          case "${{ github.ref_name }}" in
-            "main")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_PROD }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_PROD }}" >> $GITHUB_ENV
-              ;;
-            "dev")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEV }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEV }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEV }}" >> $GITHUB_ENV
-              ;;
-            "demo")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEMO }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEMO }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEMO }}" >> $GITHUB_ENV
-              ;;
-            "test")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_TEST }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_TEST }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_TEST }}" >> $GITHUB_ENV
-              ;;
-            *)
-              echo "::error::Branch no configurada: ${{ github.ref_name }}"
-              exit 1
-              ;;
-          esac
-
-      - name: Run Migrations
-        run: |
-          LOG_FILE="./Live_Lis_Flyway/flyway_$(date +%Y%m%d%H%M%S).log"
-          
-          # Ejecutar migración Flyway y crear un archivo de log
-          flyway migrate \
-            -configFiles=./Live_Lis_Flyway/flyway.toml \
-            -url="$FLYWAY_URL" \
-            -user="$FLYWAY_USER" \
-            -password="$FLYWAY_PASSWORD" \
-            -X \
-            -locations="filesystem:./Live_Lis_Flyway/migrations" \
-            -logFile="$LOG_FILE" || EXIT_CODE=$?
-          # Verificar si la migración fue exitosa
-          if [ -n "$EXIT_CODE" ]; then
-            echo "::error::Error en migración (Código: $EXIT_CODE)"
-            
-            # Verificar si el archivo de log existe
-            if [ -f "$LOG_FILE" ]; then
-              tail -n 30 "$LOG_FILE" > flyway_error.log
-            else
-              echo "::error::El archivo de log no existe: $LOG_FILE"
-              echo "Último error: $(flyway -url="$FLYWAY_URL" -user="$FLYWAY_USER" -password="$FLYWAY_PASSWORD" info)" > flyway_error.log
-            fi
-            exit $EXIT_CODE
-          fi
-
-      - name: Create GitHub Issue on Failure
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extracción de metadatos
-          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
-          DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
-          
-          # Detección del script fallido y mensaje de error
-          if grep -q "No locations configured" flyway_error.log; then
-            MIGRATION_FILE="Configuración de Flyway (flyway.toml)"
-            ERROR_MESSAGE="No se configuraron ubicaciones en flyway.toml"
-          else
-            MIGRATION_FILE=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
-            ERROR_MESSAGE=$(tail -n 10 flyway_error.log | grep -i "error" || echo "Error no especificado en el log")
-          fi
-
-          # Valores por defecto
-          [ -z "$SERVER" ] && SERVER="extracción-fallida"
-          [ -z "$DATABASE" ] && DATABASE="base-de-datos-no-detectada"
-          [ -z "$MIGRATION_FILE" ] && MIGRATION_FILE="error-desconocido-$(date +%s)"
-          [ -z "$ERROR_MESSAGE" ] && ERROR_MESSAGE="No se pudo extraer el mensaje de error específico"
-
-          # Logs y timestamp
-          LOGS=$(cat flyway_error.log || echo "No se encontraron logs disponibles")
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S")
-
-          # Crear issue usando la plantilla
-          gh issue create \
-            --template "flyway-migration-error.yml" \
-            --title "[${SERVER^^}] Flyway Migration Error - ${MIGRATION_FILE##*/}" \
-            --body-file - << EOF
----
-migration_file: "$MIGRATION_FILE"
-error_message: "$ERROR_MESSAGE"
-event_trigger: "flyway migrate"
-commit_hash: "${{ github.sha }}"
-timestamp: "$TIMESTAMP"
-git_actor: "${{ github.actor }}"
-logs: |
-  $LOGS
-additional_info: |
-  Entorno: ${{ github.ref_name }}
-  Servidor SQL: ${SERVER}.database.windows.net
-  Database: $DATABASE
----
-EOF
+name: Flyway Migration Error
+description: Reporta errores en las migraciones de Flyway ejecutadas en GitHub Actions
+title: "[SERVER] Flyway Migration Error - [MIGRATION_FILE]"
+labels: ["flyway", "bug", "migration-error"]
+assignees:
+  - "${{ github.actor }}"
+body:
+  - type: markdown
+    attributes:
+      value: "## Flyway Migration Error Report"
+  - type: input
+    id: migration_file
+    attributes:
+      label: Migration File
+      description: Nombre del archivo de migración que falló
+      placeholder: "V1__initial_setup.sql"
+    validations:
+      required: true
+  - type: textarea
+    id: error_message
+    attributes:
+      label: Error Message
+      description: Mensaje de error específico encontrado en los logs
+      placeholder: "Error: No se encontraron migraciones en la ubicación especificada"
+    validations:
+      required: true
+  - type: input
+    id: event_trigger
+    attributes:
+      label: Event Trigger
+      description: Evento que desencadenó el error
+      placeholder: "flyway migrate"
+    validations:
+      required: true
+  - type: input
+    id: commit_hash
+    attributes:
+      label: Commit Hash
+      description: Hash del commit relacionado con el error
+      placeholder: "abc1234"
+    validations:
+      required: true
+  - type: input
+    id: timestamp
+    attributes:
+      label: Timestamp
+      description: Fecha y hora del error (UTC)
+      placeholder: "2025-02-21 10:00:00"
+    validations:
+      required: true
+  - type: input
+    id: git_actor
+    attributes:
+      label: Git Actor
+      description: Usuario que desencadenó la acción
+      placeholder: "username"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Últimos logs relevantes del error
+      placeholder: "Pegar los logs aquí"
+    validations:
+      required: false
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information
+      description: Detalles adicionales como entorno, servidor SQL, etc.
+      placeholder: "Entorno: dev\nServidor SQL: my-server.database.windows.net"
+    validations:
+      required: false
