@@ -12,9 +12,13 @@ concurrency:
 jobs:
   run-migrations:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write  # Permiso crítico para crear issues
+      contents: read  # Permiso necesario para checkout
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      # ... resto de pasos ...
 
       - name: Install Flyway
         run: |
@@ -86,53 +90,38 @@ jobs:
           SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
           DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
+      
           # Procesar error
           if grep -q "No locations configured" flyway_error.log; then
             FAILED_SCRIPT="Configuración de Flyway (flyway.toml)"
-            ERROR_TYPE="⚠️ Error de Configuración"
           else
             FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
-            ERROR_TYPE="🚨 Error de Migración"
           fi
-          
+      
           # Valores por defecto
           [ -z "$SERVER" ] && SERVER="servidor-desconocido"
           [ -z "$DATABASE" ] && DATABASE="base-de-datos-no-detectada"
           [ -z "$FAILED_SCRIPT" ] && FAILED_SCRIPT="error-$(date +%s)"
-          
-          # Generar contenido para el template
-          ERROR_MSG=$(jq -Rs . < flyway_error.log)
-          LOGS_CONTENT=$(tail -n 30 flyway_error.log | jq -Rs .)
-          
-          # Construir el cuerpo del issue manualmente
-          ISSUE_BODY=$(cat <<EOF
-          ## 🚨 Error en Migración de Base de Datos
-          
-          ### Detalles del Error
-          - **Archivo de Migración:** \`$FAILED_SCRIPT\`
-          - **Mensaje de Error:** $ERROR_MSG
-          - **Comando Ejecutado:** \`flyway migrate\`
-          - **Commit:** \`${GITHUB_SHA:0:7}\`
-          - **Fecha y Hora (UTC):** \`$TIMESTAMP\`
-          - **Usuario Ejecutor:** \`Edward-Arroyave\`
-          
-          ### Logs Relevantes
+      
+          # Construir cuerpo del issue
+          ISSUE_BODY="## 🚨 Error en Migración de Base de Datos
+      
+          ### Detalles Técnicos
+          - **Archivo:** \`$FAILED_SCRIPT\`
+          - **Entorno:** \`main\`
+          - **Servidor:** \`${SERVER}.database.windows.net\`
+          - **Base de Datos:** \`$DATABASE\`
+          - **Commit:** [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **Workflow:** [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      
+          ### Logs del Error
           \`\`\`
           $(tail -n 30 flyway_error.log)
-          \`\`\`
-          
-          ### Contexto Adicional
-          **Entorno:** \`main\`
-          **Servidor SQL:** \`${SERVER}.database.windows.net\`
-          **Base de Datos:** \`${DATABASE}\`
-          **Workflow:** [\`Flyway Azure SQL Migrations\`](https://github.com/Edward-Arroyave/DevOps/actions/runs/13465692324)
-          EOF
-          )
-          
-          # Crear issue usando el cuerpo construido
+          \`\`\`"
+      
+          # Crear issue
           gh issue create \
-            --title "[${SERVER^^}] Flyway Migration Error - ${FAILED_SCRIPT##*/}" \
+            --title "[${SERVER^^}] Error Flyway - ${FAILED_SCRIPT##*/}" \
             --body "$ISSUE_BODY" \
             --assignee "Edward-Arroyave" \
             --label "flyway,bug,migration-error"
