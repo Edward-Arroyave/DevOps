@@ -31,15 +31,26 @@ jobs:
         id: set-env
         run: |
           case "${{ github.ref_name }}" in
-            "main") ENV_SUFFIX="PROD";;
-            "dev") ENV_SUFFIX="DEV";;
-            "demo") ENV_SUFFIX="DEMO";;
-            "test") ENV_SUFFIX="TEST";;
-            *) echo "::error::Branch no configurada"; exit 1;;
+            "main")
+              ENV_SUFFIX="PROD"
+              ;;
+            "dev")
+              ENV_SUFFIX="DEV"
+              ;;
+            "demo")
+              ENV_SUFFIX="DEMO"
+              ;;
+            "test")
+              ENV_SUFFIX="TEST"
+              ;;
+            *)
+              echo "::error::Branch no configurada"
+              exit 1
+              ;;
           esac
-          echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" | sed "s/PROD/$ENV_SUFFIX/g" >> $GITHUB_ENV
-          echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_PROD }}" | sed "s/PROD/$ENV_SUFFIX/g" >> $GITHUB_ENV
-          echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_PROD }}" | sed "s/PROD/$ENV_SUFFIX/g" >> $GITHUB_ENV
+          echo "FLYWAY_URL=$(eval echo \${{ secrets.FLYWAY_URL_${ENV_SUFFIX}}})" >> $GITHUB_ENV
+          echo "FLYWAY_USER=$(eval echo \${{ secrets.FLYWAY_USER_${ENV_SUFFIX}}})" >> $GITHUB_ENV
+          echo "FLYWAY_PASSWORD=$(eval echo \${{ secrets.FLYWAY_PASSWORD_${ENV_SUFFIX}}})" >> $GITHUB_ENV
 
       - name: Execute Migrations
         run: |
@@ -71,30 +82,48 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extracción de metadatos mejorada
-          SERVER=$(echo "$FLYWAY_URL" | awk -F'//|;' '{print $2}' | cut -d'.' -f1)
+          # Metadata extraction
+          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
           DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # Clasificación de errores
+          # Error classification
           if grep -q "No locations configured" flyway_error.log; then
             FAILED_COMPONENT="flyway.toml"
             ERROR_TYPE="configuration"
           else
-            FAILED_COMPONENT=$(grep -oP '\b(V|R)__\K[^.]+' flyway_error.log | tail -n1 || echo "unknown")
+            FAILED_COMPONENT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "unknown")
             ERROR_TYPE="migration"
           fi
 
-          # Crear payload usando heredoc
-          read -r -d '' JSON_PAYLOAD <<EOF
-          {
-            "title": "[${SERVER^^}] ${ERROR_TYPE^} Error - ${FAILED_COMPONENT##*/}",
-            "body": "## Flyway Migration Error Report\n\n**Tipo:** \`${ERROR_TYPE}\`\\n**Entorno:** \`${{ github.ref_name }}\`\\n**Servidor:** \`${SERVER}.database.windows.net\`\\n**Base de Datos:** \`${DATABASE}\`\\n**Commit:** [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})\\n\\n### Logs\\n\\\`\\\`\\\`\\n$(tail -n 30 flyway_error.log)\\n\\\`\\\`\\\`",
-            "assignees": ["Edward-Arroyave"],
-            "labels": ["flyway-error", "env:${{ github.ref_name }}"]
-          }
-          EOF
+          # Default values
+          [ -z "$SERVER" ] && SERVER="undetected-server"
+          [ -z "$DATABASE" ] && DATABASE="undetected-database"
+          [ -z "$FAILED_COMPONENT" ] && FAILED_COMPONENT="unknown-error-$(date +%s)"
 
+          # Build JSON payload
+          JSON_PAYLOAD=$(jq -n \
+            --arg title "[${SERVER^^}] ${ERROR_TYPE^} Error - ${FAILED_COMPONENT##*/}" \
+            --arg body "$(cat <<EOF
+              ## Flyway Migration Error Report
+              
+              **Error Type:** \`${ERROR_TYPE}\`
+              **Environment:** \`${{ github.ref_name }}\`
+              **Server:** \`${SERVER}.database.windows.net\`
+              **Database:** \`${DATABASE}\`
+              **Commit:** [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+              **Workflow:** [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              
+              ### Error Logs
+              \`\`\`
+              $(tail -n 30 flyway_error.log)
+              \`\`\`
+              EOF
+            )" \
+            '{title: $title, body: $body, assignees: ["Edward-Arroyave"], labels: ["flyway-error", "env:${{ github.ref_name }}"]}'
+          )
+
+          # Create GitHub issue
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
