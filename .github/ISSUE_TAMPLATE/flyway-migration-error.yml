@@ -2,7 +2,7 @@ name: Flyway Migration Error
 description: Reporta errores en las migraciones de Flyway ejecutadas en GitHub Actions
 title: "[SERVER] Flyway Migration Error - [MIGRATION_FILE]"
 labels: ["flyway", "bug", "migration-error"]
-assignees:
+assignees: 
   - "${{ github.actor }}"
 body:
   - type: markdown
@@ -11,64 +11,33 @@ body:
   - type: input
     id: migration_file
     attributes:
-      label: Migration File
-      description: Nombre del archivo de migración que falló
-      placeholder: "V1__initial_setup.sql"
-    validations:
-      required: true
+      label: Archivo de Migración
+      description: Nombre del archivo que causó el error
   - type: textarea
     id: error_message
     attributes:
-      label: Error Message
-      description: Mensaje de error específico encontrado en los logs
-      placeholder: "Error: No se encontraron migraciones en la ubicación especificada"
-    validations:
-      required: true
+      label: Mensaje de Error
   - type: input
     id: event_trigger
     attributes:
-      label: Event Trigger
-      description: Evento que desencadenó el error
-      placeholder: "flyway migrate"
-    validations:
-      required: true
+      label: Evento Disparador
   - type: input
     id: commit_hash
     attributes:
-      label: Commit Hash
-      description: Hash del commit relacionado con el error
-      placeholder: "abc1234"
-    validations:
-      required: true
+      label: Hash del Commit
   - type: input
     id: timestamp
     attributes:
-      label: Timestamp
-      description: Fecha y hora del error (UTC)
-      placeholder: "2025-02-21 10:00:00"
-    validations:
-      required: true
+      label: Fecha y Hora (UTC)
   - type: input
     id: git_actor
     attributes:
-      label: Git Actor
-      description: Usuario que desencadenó la acción
-      placeholder: "username"
-    validations:
-      required: true
+      label: Usuario Ejecutor
   - type: textarea
     id: logs
     attributes:
-      label: Logs
-      description: Últimos logs relevantes del error
-      placeholder: "Pegar los logs aquí"
-    validations:
-      required: false
+      label: Logs de Error
   - type: textarea
     id: additional_info
     attributes:
-      label: Additional Information
-      description: Detalles adicionales como entorno, servidor SQL, etc.
-      placeholder: "Entorno: dev\nServidor SQL: my-server.database.windows.net"
-    validations:
-      required: false
+      label: Información Adicional
