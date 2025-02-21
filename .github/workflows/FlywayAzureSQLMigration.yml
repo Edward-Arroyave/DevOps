@@ -79,8 +79,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
-          DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
+          
+     
           FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
           TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S")
           BODY="## 🚨 Flyway Migration Error Report  
