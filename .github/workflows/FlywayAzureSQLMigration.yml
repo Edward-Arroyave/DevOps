@@ -5,9 +5,6 @@ on:
     branches: [main, test, demo, dev]
   workflow_dispatch:
 
-permissions:
-  issues: write
-
 concurrency:
   group: flyway-migrations-${{ github.ref }}
   cancel-in-progress: true
@@ -21,6 +18,7 @@ jobs:
 
       - name: Configurar variables de entorno
         run: |
+          # Se asignan las variables de conexión según el branch
           case "${{ github.ref_name }}" in
             "main")
               echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
@@ -56,26 +54,3 @@ jobs:
           password: ${{ env.FLYWAY_PASSWORD }}
           locations: filesystem:./Live_Lis_Flyway/migrations
           extraArgs: -configFiles=./Live_Lis_Flyway/flyway.toml -X
-
-      - name: Crear Issue en GitHub en caso de fallo
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
-          DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
-          FAILED_SCRIPT="Migración fallida"
-          ERROR_TYPE="🚨 Error de Migración"
-          BODY="## ${ERROR_TYPE} en ${DATABASE}
-
-          **Detalles Técnicos:**
-          ▸ Entorno: \`${{ github.ref_name }}\`
-          ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
-          ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
-          ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})"
-
-          gh issue create \
-            --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT}" \
-            --body "$BODY" \
-            --assignee "${{ github.actor }}" \
-            --label "flyway"
