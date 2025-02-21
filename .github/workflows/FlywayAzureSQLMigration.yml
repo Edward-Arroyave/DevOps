@@ -95,30 +95,44 @@ jobs:
             FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
             ERROR_TYPE="🚨 Error de Migración"
           fi
-
+          
           # Valores por defecto
           [ -z "$SERVER" ] && SERVER="servidor-desconocido"
           [ -z "$DATABASE" ] && DATABASE="base-de-datos-no-detectada"
           [ -z "$FAILED_SCRIPT" ] && FAILED_SCRIPT="error-$(date +%s)"
-
+          
           # Generar contenido para el template
           ERROR_MSG=$(jq -Rs . < flyway_error.log)
           LOGS_CONTENT=$(tail -n 30 flyway_error.log | jq -Rs .)
-
-          # Crear issue usando template
+          
+          # Construir el cuerpo del issue manualmente
+          ISSUE_BODY=$(cat <<EOF
+          ## 🚨 Error en Migración de Base de Datos
+          
+          ### Detalles del Error
+          - **Archivo de Migración:** \`$FAILED_SCRIPT\`
+          - **Mensaje de Error:** $ERROR_MSG
+          - **Comando Ejecutado:** \`flyway migrate\`
+          - **Commit:** \`${GITHUB_SHA:0:7}\`
+          - **Fecha y Hora (UTC):** \`$TIMESTAMP\`
+          - **Usuario Ejecutor:** \`Edward-Arroyave\`
+          
+          ### Logs Relevantes
+          \`\`\`
+          $(tail -n 30 flyway_error.log)
+          \`\`\`
+          
+          ### Contexto Adicional
+          **Entorno:** \`main\`
+          **Servidor SQL:** \`${SERVER}.database.windows.net\`
+          **Base de Datos:** \`${DATABASE}\`
+          **Workflow:** [\`Flyway Azure SQL Migrations\`](https://github.com/Edward-Arroyave/DevOps/actions/runs/13465692324)
+          EOF
+          )
+          
+          # Crear issue usando el cuerpo construido
           gh issue create \
             --title "[${SERVER^^}] Flyway Migration Error - ${FAILED_SCRIPT##*/}" \
-            --body-file .github/ISSUE_TEMPLATE/flyway-error.yml \
-            --assignee "${{ github.actor }}" \
-            --label "flyway,bug,migration-error" \
-            -f migration_file="$FAILED_SCRIPT" \
-            -f error_message="$ERROR_MSG" \
-            -f event_trigger="flyway migrate" \
-            -f commit_hash="${GITHUB_SHA:0:7}" \
-            -f timestamp="$TIMESTAMP" \
-            -f git_actor="${{ github.actor }}" \
-            -f logs="$LOGS_CONTENT" \
-            -f additional_info="**Entorno:** \`${{ github.ref_name }}\`
-            **Servidor SQL:** \`${SERVER}.database.windows.net\`
-            **Base de Datos:** \`${DATABASE}\`
-            **Workflow:** [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            --body "$ISSUE_BODY" \
+            --assignee "Edward-Arroyave" \
+            --label "flyway,bug,migration-error"
