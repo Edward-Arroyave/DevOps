@@ -95,4 +95,4 @@ jobs:
             --title "[${SERVER^^}] 🚨 Error en migración - ${FAILED_SCRIPT##*/}" \
             --body "$BODY" \
             --assignee "${{ github.actor }}" \
-            --label "flyway, bug, migration-error"
+            --label "flyway,bug,migration-error"
