@@ -13,6 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate environment variables
+        run: |
+          if [[ -z "$FLYWAY_URL" || -z "$FLYWAY_USER" || -z "$FLYWAY_PASSWORD" ]]; then
+            echo "❌ ERROR: Missing Flyway credentials. Please check your secrets."
+            exit 1
+          fi
+
       - name: Set up Flyway
         run: |
           curl -L "https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/11.3.3/flyway-commandline-11.3.3-linux-x64.tar.gz" -o flyway.tar.gz
@@ -27,6 +34,7 @@ jobs:
           /opt/flyway/flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate 2>&1 | tee flyway_error.log
           EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -ne 0 ]; then
+            echo "Flyway failed. Capturing logs..." 
             echo "FAILURE" > flyway_failed.log
             exit $EXIT_CODE
           fi
@@ -36,7 +44,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
+          if [ ! -f flyway_error.log ]; then
+            echo "⚠️ No error log found, skipping issue creation."
+            exit 1
+          fi
+
           FAILED_SCRIPT=$(grep "Migrating" flyway_error.log | tail -n 1 | awk '{print $NF}')
+          if [ -z "$FAILED_SCRIPT" ]; then
+            FAILED_SCRIPT="N/A (Connection Error or Configuration Issue)"
+          fi
+
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           BODY="## 🚨 Flyway Migration Error Report  
@@ -48,13 +65,10 @@ jobs:
           **Git Actor:** ${{ github.actor }}  
           **Logs:** See attached log file."
 
+          echo "$BODY" > issue_body.md
+
           gh issue create \
             --title "[${{ github.repository }}] 🚨 Error en migración - ${FAILED_SCRIPT##*/}" \
-            --body "$BODY" \
+            --body-file issue_body.md \
             --assignee "Edward-Arroyave" \
             --label "flyway,bug,migration-error"
-
-    env:
-      FLYWAY_URL: ${{ secrets.FLYWAY_URL }}
-      FLYWAY_USER: ${{ secrets.FLYWAY_USER }}
-      FLYWAY_PASSWORD: ${{ secrets.FLYWAY_PASSWORD }}
