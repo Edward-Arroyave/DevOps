@@ -15,14 +15,21 @@ jobs:
 
       - name: Set up Flyway
         run: |
-          curl -L "https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.0.0/flyway-commandline-10.0.0-linux-x64.tar.gz" -o flyway.tar.gz
+          curl -L "https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/11.3.3/flyway-commandline-11.3.3-linux-x64.tar.gz" -o flyway.tar.gz
           tar -xzf flyway.tar.gz
-          sudo mv flyway-10.0.0 /opt/flyway
+          sudo mv flyway-11.3.3 /opt/flyway
           echo "/opt/flyway" >> $GITHUB_PATH
 
       - name: Run Flyway Migration
+        id: flyway_migrate
+        continue-on-error: true
         run: |
-          /opt/flyway/flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate || echo "FAILURE" > flyway_failed.log
+          /opt/flyway/flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate 2>&1 | tee flyway_error.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "FAILURE" > flyway_failed.log
+            exit $EXIT_CODE
+          fi
 
       - name: Handle Migration Error
         if: failure()
