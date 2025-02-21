@@ -1,0 +1,92 @@
+name: "Flyway Migration Error"
+description: "Report an issue encountered during a Flyway database migration"
+labels: ["flyway", "bug", "migration-error"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🚨 Flyway Migration Error Report  
+        Please fill in the details below to help us investigate the issue.  
+
+  - type: input
+    id: migration_file
+    attributes:
+      label: "📄 Migration File"
+      description: "Name of the Flyway migration file that caused the error (e.g., V1_2__update_schema.sql)"
+      placeholder: "V1_2__update_schema.sql"
+    validations:
+      required: true
+
+  - type: input
+    id: error_message
+    attributes:
+      label: "🛑 Error Message"
+      description: "Paste the error message output from Flyway"
+      placeholder: "FlywayException: Migration failed at step..."
+    validations:
+      required: true
+
+  - type: input
+    id: event_trigger
+    attributes:
+      label: "📌 Event Trigger"
+      description: "What action triggered the issue? (e.g., `flyway migrate`, `flyway repair`)"
+      placeholder: "flyway migrate"
+    validations:
+      required: true
+
+  - type: input
+    id: commit_hash
+    attributes:
+      label: "🔗 Commit Hash"
+      description: "Provide the commit hash where the issue occurred"
+      placeholder: "e.g., a1b2c3d4e5f6"
+    validations:
+      required: true
+
+  - type: input
+    id: timestamp
+    attributes:
+      label: "📅 Date & Time"
+      description: "When did the error occur? (UTC format preferred)"
+      placeholder: "YYYY-MM-DD HH:MM:SS"
+    validations:
+      required: true
+
+  - type: input
+    id: git_actor
+    attributes:
+      label: "👤 Git Actor"
+      description: "Who triggered the migration? Provide the GitHub username or author name."
+      placeholder: "@username or John Doe"
+    validations:
+      required: true
+
+  - type: textarea
+    id: git_user_details
+    attributes:
+      label: "📂 Git User Details"
+      description: "Include additional Git user details (e.g., email, ID) if available."
+      placeholder: "Username: johndoe\nEmail: johndoe@example.com\nGit ID: 123456"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "📜 Logs & Debug Output"
+      description: "Attach relevant logs from Flyway or the database server"
+      placeholder: "Paste logs here..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: "📝 Additional Context"
+      description: "Any other useful information that might help us debug the issue."
+      placeholder: "Additional notes..."
+    validations:
+      required: false
