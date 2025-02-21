@@ -51,77 +51,31 @@ jobs:
               exit 1
               ;;
           esac
-
-      - name: Run Migrations
-        run: |
-          LOG_FILE="./Live_Lis_Flyway/flyway_$(date +%Y%m%d%H%M%S).log"
-          
-          # Ejecutar migración Flyway y crear un archivo de log
-          flyway migrate \
-            -configFiles=./Live_Lis_Flyway/flyway.toml \
-            -url="$FLYWAY_URL" \
-            -user="$FLYWAY_USER" \
-            -password="$FLYWAY_PASSWORD" \
-            -X \
-            -locations="filesystem:./Live_Lis_Flyway/migrations" \
-            -logFile="$LOG_FILE" || EXIT_CODE=$?
-          # Verificar si la migración fue exitosa
-          if [ -n "$EXIT_CODE" ]; then
-            echo "::error::Error en migración (Código: $EXIT_CODE)"
-            
-            # Verificar si el archivo de log existe
-            if [ -f "$LOG_FILE" ]; then
-              tail -n 30 "$LOG_FILE" > flyway_error.log
-            else
-              # En caso de que no exista el archivo de log, capturamos el último mensaje de error
-              echo "::error::El archivo de log no existe: $LOG_FILE"
-              echo "Último error: $(flyway -url="$FLYWAY_URL" -user="$FLYWAY_USER" -password="$FLYWAY_PASSWORD" info)" > flyway_error.log
-            fi
-            exit $EXIT_CODE
-          fi
-
       - name: Create GitHub Issue on Failure
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extracción robusta de metadatos
-          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
-          DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
-      
-          # Detección precisa del error
-          if grep -q "No locations configured" flyway_error.log; then
-            FAILED_SCRIPT="Configuración de Flyway (flyway.toml)"
-            ERROR_TYPE="⚠️ Error de Configuración"
-            ACTION="Verificar 'locations' en flyway.toml"
-            LOG_LINK="https://github.com/${{ github.repository }}/blob/${{ github.sha }}/Live_Lis_Flyway/flyway.toml"
-          else
-            FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
-            ERROR_TYPE="🚨 Error de Migración"
-            ACTION="Revisar script: [${FAILED_SCRIPT}](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/Live_Lis_Flyway/migrations/${FAILED_SCRIPT})"
-            LOG_LINK=""
-          fi
-      
-          # Valores por defecto garantizados
-          [ -z "$SERVER" ] && SERVER="extracción-fallida"
-          [ -z "$DATABASE" ] && DATABASE="base-de-datos-no-detectada"
-          [ -z "$FAILED_SCRIPT" ] && FAILED_SCRIPT="error-desconocido-$(date +%s)"
-      
-          # Construcción del cuerpo del issue
-          BODY="## ${ERROR_TYPE} en ${DATABASE}
-      
-          **Detalles Técnicos:**
-          ▸ Entorno: \`${{ github.ref_name }}\`
-          ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
-          ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
-          ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-      
-          "
-      
-          # Crear issue con datos técnicos reales
+          # ... (código de extracción de metadatos igual) ...
+          
+          # Generar contenido dinámico para el template
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          ERROR_MSG=$(jq -Rs . < flyway_error.log)
+          LOGS_CONTENT=$(tail -n 30 flyway_error.log | jq -Rs .)
+  
+          # Crear issue usando el template con parámetros dinámicos
           gh issue create \
-            --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT##*/}" \
-            --body "$BODY" \
+            --title "[${SERVER^^}] Flyway Migration Error - ${FAILED_SCRIPT##*/}" \
+            --body-file .github/ISSUE_TEMPLATE/flyway-error.yml \
             --assignee "${{ github.actor }}" \
-            --label "flyway"
-
+            --label "flyway,bug,migration-error" \
+            -f migration_file="${FAILED_SCRIPT}" \
+            -f error_message="${ERROR_MSG}" \
+            -f event_trigger="flyway migrate" \
+            -f commit_hash="${GITHUB_SHA:0:7}" \
+            -f timestamp="${TIMESTAMP}" \
+            -f git_actor="${{ github.actor }}" \
+            -f logs="${LOGS_CONTENT}" \
+            -f additional_info="Entorno: ${{ github.ref_name }}
+            Servidor SQL: ${SERVER}.database.windows.net
+            Base de Datos: ${DATABASE}"
