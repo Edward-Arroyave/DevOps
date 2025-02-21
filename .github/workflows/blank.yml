@@ -1,0 +1,54 @@
+name: Flyway Issue Creation
+
+on:
+  workflow_run:
+    workflows: ["Flyway Azure SQL Migrations"]
+    types:
+      - completed
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-issue:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configurar variables para creación de Issue
+        run: |
+          # Se obtiene el branch del workflow que falló
+          echo "BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
+          # Se selecciona la URL según el branch; en este ejemplo, si no es main se asume entorno DEV
+          if [ "${{ github.event.workflow_run.head_branch }}" == "main" ]; then
+            echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
+          else
+            echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEV }}" >> $GITHUB_ENV
+          fi
+
+      - name: Crear Issue con GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extraer información del servidor y la base de datos desde FLYWAY_URL
+          SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
+          DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
+          FAILED_SCRIPT="Migración fallida"
+          ERROR_TYPE="🚨 Error de Migración"
+          BODY="## ${ERROR_TYPE} en ${DATABASE}
+
+          **Detalles Técnicos:**
+          ▸ Entorno: \`${{ github.event.workflow_run.head_branch }}\`
+          ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
+          ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
+          ▸ Workflow: [${{ github.event.workflow_run.name }}](${{ github.event.workflow_run.html_url }})
+          ▸ Commit: [\`${{ github.event.workflow_run.head_commit.id.substring(0,7) }}\`](${{ github.event.workflow_run.head_commit.url }})"
+          
+          gh issue create \
+            --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT}" \
+            --body "$BODY" \
+            --assignee "${{ github.event.workflow_run.triggering_actor.login }}" \
+            --label "flyway"
