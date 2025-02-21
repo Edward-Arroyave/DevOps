@@ -1,43 +1,33 @@
 name: Flyway Migration Error
-description: Reporta errores en las migraciones de Flyway ejecutadas en GitHub Actions
+description: Reporte automatizado de fallos en migraciones de base de datos
 title: "[SERVER] Flyway Migration Error - [MIGRATION_FILE]"
 labels: ["flyway", "bug", "migration-error"]
 assignees: 
-  - "${{ github.actor }}"
+  - "Edward-Arroyave"  # Administrador fijo
 body:
   - type: markdown
     attributes:
-      value: "## Flyway Migration Error Report"
-  - type: input
-    id: migration_file
+      value: |
+        ## Flyway Migration Error Report
+        **Error detectado automáticamente en el pipeline de CI/CD**
+
+  - type: textarea
+    id: error_details
     attributes:
-      label: Archivo de Migración
-      description: Nombre del archivo que causó el error
+      label: Detalles Técnicos
+      description: Información técnica del error
+      render: markdown
+
   - type: textarea
     id: error_message
     attributes:
-      label: Mensaje de Error
-  - type: input
-    id: event_trigger
-    attributes:
-      label: Evento Disparador
-  - type: input
-    id: commit_hash
-    attributes:
-      label: Hash del Commit
-  - type: input
-    id: timestamp
-    attributes:
-      label: Fecha y Hora (UTC)
-  - type: input
-    id: git_actor
-    attributes:
-      label: Usuario Ejecutor
-  - type: textarea
-    id: logs
-    attributes:
-      label: Logs de Error
+      label: Logs del Error
+      description: Últimas líneas relevantes del log
+      render: shell
+
   - type: textarea
     id: additional_info
     attributes:
-      label: Información Adicional
+      label: Contexto Adicional
+      description: Metadatos y configuración del entorno
+      render: markdown
