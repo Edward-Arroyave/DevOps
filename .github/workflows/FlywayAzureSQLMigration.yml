@@ -88,7 +88,7 @@ jobs:
           # Extracción robusta de metadatos
           SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
           DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
-          
+      
           # Detección precisa del error
           if grep -q "No locations configured" flyway_error.log; then
             FAILED_SCRIPT="Configuración de Flyway (flyway.toml)"
@@ -109,14 +109,14 @@ jobs:
       
           # Construcción del cuerpo del issue
           BODY="## ${ERROR_TYPE} en ${DATABASE}
-          
+      
           **Detalles Técnicos:**
           ▸ Entorno: \`${{ github.ref_name }}\`
           ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
           ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
           ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-
-         
+      
+          "
       
           # Crear issue con datos técnicos reales
           gh issue create \
@@ -124,3 +124,4 @@ jobs:
             --body "$BODY" \
             --assignee "${{ github.actor }}" \
             --label "error-db,urgente"
+
