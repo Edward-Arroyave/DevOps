@@ -21,34 +21,31 @@ jobs:
           echo "/opt/flyway" >> $GITHUB_PATH
 
       - name: Run Flyway Migration
-        id: migrate
         run: |
-          /opt/flyway/flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate 2> flyway_error.log || echo "error" > flyway_failed
+          /opt/flyway/flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate || echo "FAILURE" > flyway_failed.log
 
       - name: Handle Migration Error
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          if [ -f flyway_failed ]; then
-            FAILED_SCRIPT=$(grep "Migrating" flyway_error.log | tail -n 1 | awk '{print $NF}')
-            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            
-            BODY="## 🚨 Flyway Migration Error Report  
-            **Migration File:** $FAILED_SCRIPT  
-            **Error Message:** $(tail -n 5 flyway_error.log)  
-            **Event Trigger:** flyway migrate  
-            **Commit Hash:** ${{ github.sha }}  
-            **Date & Time:** $TIMESTAMP  
-            **Git Actor:** ${{ github.actor }}  
-            **Logs:** See attached log file."
+          FAILED_SCRIPT=$(grep "Migrating" flyway_error.log | tail -n 1 | awk '{print $NF}')
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-            gh issue create \
-              --title "[${{ github.repository }}] 🚨 Error en migración - ${FAILED_SCRIPT##*/}" \
-              --body "$BODY" \
-              --assignee "Edward-Arroyave" \
-              --label "flyway,bug,migration-error"
-          fi
+          BODY="## 🚨 Flyway Migration Error Report  
+          **Migration File:** $FAILED_SCRIPT  
+          **Error Message:** $(tail -n 5 flyway_error.log)  
+          **Event Trigger:** flyway migrate  
+          **Commit Hash:** ${{ github.sha }}  
+          **Date & Time:** $TIMESTAMP  
+          **Git Actor:** ${{ github.actor }}  
+          **Logs:** See attached log file."
+
+          gh issue create \
+            --title "[${{ github.repository }}] 🚨 Error en migración - ${FAILED_SCRIPT##*/}" \
+            --body "$BODY" \
+            --assignee "Edward-Arroyave" \
+            --label "flyway,bug,migration-error"
 
     env:
       FLYWAY_URL: ${{ secrets.FLYWAY_URL }}
