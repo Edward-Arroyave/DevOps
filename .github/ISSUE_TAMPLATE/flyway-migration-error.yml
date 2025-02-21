@@ -1,33 +1,38 @@
-name: Flyway Migration Error
-description: Reporte automatizado de fallos en migraciones de base de datos
-title: "[SERVER] Flyway Migration Error - [MIGRATION_FILE]"
-labels: ["flyway", "bug", "migration-error"]
-assignees: 
-  - "Edward-Arroyave"  # Administrador fijo
-body:
-  - type: markdown
-    attributes:
-      value: |
-        ## Flyway Migration Error Report
-        **Error detectado automáticamente en el pipeline de CI/CD**
+---
+name: Flyway Error Report
+about: Reporte automatizado de errores en migraciones de base de datos
+title: "[FLYWAY] [${ENV}] ${ERROR_TYPE} - ${SCRIPT_NAME}"
+labels: flyway-error, env:${ENV}
+assignees: Edward-Arroyave
 
-  - type: textarea
-    id: error_details
-    attributes:
-      label: Detalles Técnicos
-      description: Información técnica del error
-      render: markdown
+---
 
-  - type: textarea
-    id: error_message
-    attributes:
-      label: Logs del Error
-      description: Últimas líneas relevantes del log
-      render: shell
+## Error Details
 
-  - type: textarea
-    id: additional_info
-    attributes:
-      label: Contexto Adicional
-      description: Metadatos y configuración del entorno
-      render: markdown
+**Server:**  
+${SERVER}
+
+**Database:**  
+${DATABASE}
+
+**Failed Component:**  
+${FAILED_COMPONENT}
+
+**Error Type:**  
+${ERROR_TYPE}
+
+## Technical Information
+
+**Commit:**  
+${COMMIT_LINK}
+
+**Workflow:**  
+${WORKFLOW_LINK}
+
+**Timestamp:**  
+${TIMESTAMP}
+
+## Error Logs
+
+```log
+${ERROR_LOGS}
