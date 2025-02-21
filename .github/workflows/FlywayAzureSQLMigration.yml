@@ -12,110 +12,87 @@ concurrency:
 jobs:
   run-migrations:
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Flyway
-        run: |
-          FLYWAY_VERSION=11.3.2
-          curl -sL https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/$FLYWAY_VERSION/flyway-commandline-$FLYWAY_VERSION-linux-x64.tar.gz -o flyway.tar.gz
-          tar -xzf flyway.tar.gz
-          echo "$(pwd)/flyway-$FLYWAY_VERSION" >> $GITHUB_PATH
-
-      - name: Configure Environment
+      - name: Determine Environment
+        id: env
         run: |
           case "${{ github.ref_name }}" in
-            "main")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_PROD }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_PROD }}" >> $GITHUB_ENV
-              ;;
-            "dev")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEV }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEV }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEV }}" >> $GITHUB_ENV
-              ;;
-            "demo")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEMO }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEMO }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEMO }}" >> $GITHUB_ENV
-              ;;
-            "test")
-              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_TEST }}" >> $GITHUB_ENV
-              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_TEST }}" >> $GITHUB_ENV
-              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_TEST }}" >> $GITHUB_ENV
-              ;;
-            *)
-              echo "::error::Branch no configurada"
-              exit 1
-              ;;
+            "main") ENV="PROD";;
+            "dev") ENV="DEV";;
+            "demo") ENV="DEMO";;
+            "test") ENV="TEST";;
+            *) echo "::error::Branch no configurada: ${{ github.ref_name }}"; exit 1;;
           esac
+          echo "env=$ENV" >> $GITHUB_OUTPUT
 
-      - name: Execute Migrations
+      - name: Run Flyway Migrations
         run: |
-          LOG_FILE="./Live_Lis_Flyway/flyway_$(date +%Y%m%d%H%M%S).log"
-          EXIT_CODE=0
-          
-          flyway migrate \
-            -configFiles=./Live_Lis_Flyway/flyway.toml \
-            -url="$FLYWAY_URL" \
-            -user="$FLYWAY_USER" \
-            -password="$FLYWAY_PASSWORD" \
+          docker run --rm \
+            -v $(pwd)/Live_Lis_Flyway:/flyway/Live_Lis_Flyway \
+            redgate/flyway:latest-alpine \
+            migrate \
+            -url="${{ secrets[format('FLYWAY_URL_{0}', steps.env.outputs.env)] }}" \
+            -user="${{ secrets[format('FLYWAY_USER_{0}', steps.env.outputs.env)] }}" \
+            -password="${{ secrets[format('FLYWAY_PASSWORD_{0}', steps.env.outputs.env)] }}" \
+            -locations="filesystem:/flyway/Live_Lis_Flyway/migrations" \
+            -configFiles=/flyway/Live_Lis_Flyway/flyway.toml \
             -X \
-            -locations="filesystem:./Live_Lis_Flyway/migrations" \
-            -logFile="$LOG_FILE" || EXIT_CODE=$?
+            -logFile="/flyway/flyway_${{ github.run_id }}.log" || {
+              echo "::error::Error en migración"
+              exit 1
+            }
+          # Copiar el log al host para usarlo en pasos posteriores
+          docker cp $(docker ps -lq):/flyway/flyway_${{ github.run_id }}.log ./flyway_${{ github.run_id }}.log
 
-          if [ $EXIT_CODE -ne 0 ]; then
-            mkdir -p error_logs
-            if [ -f "$LOG_FILE" ]; then
-              tail -n 30 "$LOG_FILE" > flyway_error.log
-            else
-              flyway -url="$FLYWAY_URL" -user="$FLYWAY_USER" -password="$FLYWAY_PASSWORD" info > flyway_error.log
-            fi
-            exit $EXIT_CODE
-          fi
+      - name: Upload Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flyway-error-log
+          path: ./flyway_${{ github.run_id }}.log
 
-      - name: Create Error Issue
+      - name: Create GitHub Issue on Failure
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extracción de metadatos
-          SERVER=$(awk -F'//|;' '{print $2}' <<< "$FLYWAY_URL" | cut -d'.' -f1)
-          DATABASE=$(awk -F'databaseName=' '{print $2}' <<< "$FLYWAY_URL" | cut -d';' -f1)
-          
-          # Clasificación de errores
-          if grep -q "No locations configured" flyway_error.log; then
-            FAILED_COMPONENT="flyway.toml"
-            ERROR_TYPE="Configuración"
+          LOG_FILE="./flyway_${{ github.run_id }}.log"
+          SERVER=$(echo "${{ secrets[format('FLYWAY_URL_{0}', steps.env.outputs.env)] }}" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
+          DATABASE=$(echo "${{ secrets[format('FLYWAY_URL_{0}', steps.env.outputs.env)] }}" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
+
+          # Valores por defecto
+          SERVER=${SERVER:-"extraccion-fallida"}
+          DATABASE=${DATABASE:-"base-de-datos-no-detectada"}
+
+          # Análisis del log
+          if grep -q "No locations configured" "$LOG_FILE"; then
+            FAILED_SCRIPT="Configuración de Flyway (flyway.toml)"
+            ERROR_TYPE="⚠️ Error de Configuración"
+            ACTION="Verificar 'locations' en flyway.toml"
+            LOG_LINK="https://github.com/${{ github.repository }}/blob/${{ github.sha }}/Live_Lis_Flyway/flyway.toml"
           else
-            FAILED_COMPONENT=$(grep -oP '\b(V|R)__\K[^.]+' flyway_error.log | tail -n1 || echo "Desconocido")
-            ERROR_TYPE="Migración"
+            FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' "$LOG_FILE" | tail -n1 || echo "Archivo no identificado")
+            ERROR_TYPE="🚨 Error de Migración"
+            ACTION="Revisar script: [${FAILED_SCRIPT}](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/Live_Lis_Flyway/migrations/${FAILED_SCRIPT})"
+            LOG_LINK="https://github.com/${{ github.repository }}/runs/${{ github.run_id }}"
           fi
 
-          # Construir cuerpo del issue
-          read -r -d '' BODY <<EOF
-          ## 🚨 Error de ${ERROR_TYPE} en ${DATABASE}
-          
-          **Detalles técnicos:**
-          - Entorno: \`${{ github.ref_name }}\`
-          - Servidor: \`${SERVER}.database.windows.net\`
-          - Recurso fallido: \`${FAILED_COMPONENT}\`
-          - Commit: [${GITHUB_SHA:0:7}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-          
-          ### Logs de error
-          \`\`\`
-          $(tail -n 30 flyway_error.log)
-          \`\`\`
-          EOF
+          FAILED_SCRIPT=${FAILED_SCRIPT:-"error-desconocido-$(date +%s)"}
 
-          # Crear issue
+          BODY="## ${ERROR_TYPE} en ${DATABASE}
+          **Detalles Técnicos:**
+          ▸ Entorno: ${{ steps.env.outputs.env }}
+          ▸ Servidor SQL: ${SERVER}.database.windows.net
+          ▸ Recurso Fallido: ${FAILED_SCRIPT}
+          ▸ Commit: [${{ github.sha:0:7}}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          ▸ [Log de Ejecución](${LOG_LINK})
+          **Acción Requerida:** ${ACTION}"
+
           gh issue create \
-            --title "[${SERVER^^}] Error ${ERROR_TYPE} - ${FAILED_COMPONENT##*/}" \
+            --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT##*/}" \
             --body "$BODY" \
-            --assignee "Edward-Arroyave" \
-            --label "error-db,urgente,env:${{ github.ref_name }}"
+            --assignee "${{ github.actor }}" \
+            --label "error-db,urgente"
