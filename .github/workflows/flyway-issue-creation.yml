@@ -1,39 +1,67 @@
-name: Flyway Issue Creation
+name: Flyway Azure SQL Migrations
 
 on:
-  workflow_run:
-    workflows: ["Flyway Azure SQL Migrations"]
-    types:
-      - completed
+  push:
+    branches: [main, test, demo, dev]
+  workflow_dispatch:
 
 permissions:
   issues: write
-  contents: read
+
+concurrency:
+  group: flyway-migrations-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  create-issue:
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+  run-migrations:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configurar variables para creación de Issue
+      - name: Configurar variables de entorno
         run: |
-          # Se obtiene el branch del workflow que falló
-          echo "BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
-          # Se selecciona la URL según el branch; en este ejemplo, si no es main se asume entorno DEV
-          if [ "${{ github.event.workflow_run.head_branch }}" == "main" ]; then
-            echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
-          else
-            echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEV }}" >> $GITHUB_ENV
-          fi
+          case "${{ github.ref_name }}" in
+            "main")
+              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_PROD }}" >> $GITHUB_ENV
+              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_PROD }}" >> $GITHUB_ENV
+              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_PROD }}" >> $GITHUB_ENV
+              ;;
+            "dev")
+              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEV }}" >> $GITHUB_ENV
+              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEV }}" >> $GITHUB_ENV
+              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEV }}" >> $GITHUB_ENV
+              ;;
+            "demo")
+              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_DEMO }}" >> $GITHUB_ENV
+              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_DEMO }}" >> $GITHUB_ENV
+              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_DEMO }}" >> $GITHUB_ENV
+              ;;
+            "test")
+              echo "FLYWAY_URL=${{ secrets.FLYWAY_URL_TEST }}" >> $GITHUB_ENV
+              echo "FLYWAY_USER=${{ secrets.FLYWAY_USER_TEST }}" >> $GITHUB_ENV
+              echo "FLYWAY_PASSWORD=${{ secrets.FLYWAY_PASSWORD_TEST }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "::error::Branch no configurada: ${{ github.ref_name }}"
+              exit 1
+              ;;
+          esac
 
-      - name: Crear Issue con GitHub CLI
+      - name: Ejecutar migraciones con Flyway
+        uses: red-gate/FlywayGithubAction@main
+        with:
+          url: ${{ env.FLYWAY_URL }}
+          user: ${{ env.FLYWAY_USER }}
+          password: ${{ env.FLYWAY_PASSWORD }}
+          locations: filesystem:./Live_Lis_Flyway/migrations
+          extraArgs: -configFiles=./Live_Lis_Flyway/flyway.toml -X
+
+      - name: Crear Issue en GitHub en caso de fallo
+        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extraer información del servidor y la base de datos desde FLYWAY_URL
           SERVER=$(echo "$FLYWAY_URL" | awk -F'//' '{split($2,a,";"); print a[1]}' | cut -d'.' -f1)
           DATABASE=$(echo "$FLYWAY_URL" | awk -F'databaseName=' '{print $2}' | cut -d';' -f1)
           FAILED_SCRIPT="Migración fallida"
@@ -41,14 +69,13 @@ jobs:
           BODY="## ${ERROR_TYPE} en ${DATABASE}
 
           **Detalles Técnicos:**
-          ▸ Entorno: \`${{ github.event.workflow_run.head_branch }}\`
+          ▸ Entorno: \`${{ github.ref_name }}\`
           ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
           ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
-          ▸ Workflow: [${{ github.event.workflow_run.name }}](${{ github.event.workflow_run.html_url }})
-          ▸ Commit: [\`${{ github.event.workflow_run.head_commit.id.substring(0,7) }}\`](${{ github.event.workflow_run.head_commit.url }})"
-          
+          ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})"
+
           gh issue create \
             --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT}" \
             --body "$BODY" \
-            --assignee "${{ github.event.workflow_run.triggering_actor.login }}" \
+            --assignee "${{ github.actor }}" \
             --label "flyway"
