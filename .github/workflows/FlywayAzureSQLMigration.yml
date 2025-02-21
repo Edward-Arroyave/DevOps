@@ -75,4 +75,4 @@ jobs:
             --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT}" \
             --body "$BODY" \
             --assignee "${{ github.actor }}" \
-            --label "error-db,urgente"
+            --label "flyway"
