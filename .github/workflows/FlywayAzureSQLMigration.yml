@@ -65,11 +65,11 @@ jobs:
           ERROR_TYPE="🚨 Error de Migración"
           BODY="## ${ERROR_TYPE} en ${DATABASE}
 
-**Detalles Técnicos:**
-▸ Entorno: \`${{ github.ref_name }}\`
-▸ Servidor SQL: \`${SERVER}.database.windows.net\`
-▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
-▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})"
+          **Detalles Técnicos:**
+          ▸ Entorno: \`${{ github.ref_name }}\`
+          ▸ Servidor SQL: \`${SERVER}.database.windows.net\`
+          ▸ Recurso Fallido: \`${FAILED_SCRIPT}\`
+          ▸ Commit: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})"
 
           gh issue create \
             --title "[${SERVER^^}] ${ERROR_TYPE} - ${FAILED_SCRIPT}" \
