@@ -81,8 +81,8 @@ jobs:
         run: |
           
      
-          FAILED_SCRIPT=$(grep -oE '\b(V|R)__[A-Za-z0-9_]+\.sql\b' flyway_error.log | tail -n1 || echo "Archivo no identificado")
-          TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S")
+
+
           BODY="## 🚨 Flyway Migration Error Report  
           **Migration File:** $FAILED_SCRIPT  
           **Error Message:** $(tail -n 5 flyway_error.log)  
