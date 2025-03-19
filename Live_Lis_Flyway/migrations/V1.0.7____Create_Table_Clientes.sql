@@ -1,0 +1,6 @@
+CREATE TABLE Clientes (
+    ID INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Correo VARCHAR(150) UNIQUE,
+    FechaRegistro DATETIME DEFAULT GETDATE()
+);
